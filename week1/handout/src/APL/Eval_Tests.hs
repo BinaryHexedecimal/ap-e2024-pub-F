@@ -3,68 +3,51 @@ module APL.Eval_Tests (tests) where
 
 
 import APL.AST (Exp (..))
-import APL.Eval (Val (..), eval)
+import APL.Eval (Val (..), envEmpty, eval)
 import Test.Tasty.HUnit (testCase, (@?=))
 import Test.Tasty (TestTree, testGroup)
 
---import APL.AST ()
---import APL.Eval ()
---import Test.Tasty.HUnit ()
-
-{- data Val
-  = ValInt Integer
-  deriving (Eq, Show)
-
-eval :: Exp -> Val
-eval (CstInt x) = ValInt x -}
 
 tests :: TestTree
 tests =
   testGroup
     "Evaluation"
     [testCase "Constant" $
-        eval (CstInt 2)
+        eval envEmpty (CstInt 2)
           @?= Right (ValInt 2) ,
     ---
     testCase "Add" $
-        eval (Add (CstInt 2) (CstInt 3))
+        eval envEmpty (Add (CstInt 2) (CstInt 3))
           @?= Right (ValInt 5) ,
     ---
     testCase "Add (wrong type)" $
-        eval (Add (CstInt 2) (CstBool True))
+        eval envEmpty (Add (CstInt 2) (CstBool True))
           @?= Left "Non-integer operand",
 
     ---
     testCase "Sub" $
-        eval (Sub (CstInt 9) (CstInt 3))
+        eval envEmpty (Sub (CstInt 9) (CstInt 3))
           @?= Right (ValInt 6),
 
     ---
     testCase "Mul" $
-        eval (Mul (CstInt 9) (CstInt 3))
+        eval envEmpty (Mul (CstInt 9) (CstInt 3))
           @?= Right (ValInt 27),
 
     ---
     testCase "Div" $
-        eval (Div (CstInt 9) (CstInt 3))
-          @?= Right (ValInt 3)
-    -- ---
-    -- testCase "Div0" $
-    --     eval (Div (CstInt 9) (CstInt 0))
-    --       @?= ValInt 3,      
-
-    --           ---
-    -- testCase "Pow" $
-    --     eval (Pow (CstInt 2) (CstInt 3))
-    --       @?= ValInt 8,
-
-    -- testCase "Pow Negative Exponent" $
-    --     eval (Pow (CstInt 2) (CstInt (-3)))
-    --       @?= ValInt 0
+        eval envEmpty (Div (CstInt 9) (CstInt 3))
+          @?= Right (ValInt 3),
+    ---
+    testCase "Eql (false)" $
+        eval envEmpty (Eql (CstBool True) (CstBool False))
+          @?= Right (ValBool False),
+    --
+    testCase "Eql (true)" $
+      eval envEmpty (Eql (CstInt 2) (CstInt 2))
+        @?= Right (ValBool True),
+    --
+    testCase "If" $
+      eval envEmpty (If (CstBool True) (CstInt 2) (Div (CstInt 7) (CstInt 1)))
+        @?= Right (ValInt 2)
     ]
-
-{- eval (Add (CstInt x) (CstInt y)) = ValInt (x + y)
-eval (Sub (CstInt x) (CstInt y)) = ValInt (x - y)
-eval (Mul (CstInt x) (CstInt y)) = ValInt (x * y)
-eval (Div (CstInt x) (CstInt y)) = ValInt (x `div` y)
-eval (Pow (CstInt x) (CstInt y)) = ValInt (x ^ y) -}
