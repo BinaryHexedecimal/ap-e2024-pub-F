@@ -1,10 +1,13 @@
 module Eq where
 
+
+--https://hackage.haskell.org/package/base-4.20.0.1/docs/Data-Eq.html
 {-
 class Eq a where
     (==) :: a -> a -> Bool
     (/=) :: a -> a -> Bool
-
+---class is typeclass
+--instance, (int is a instance of Eq?)
 Eq laws:
     Reflexivity:    x == x = True
     Symmetry:       x == y = y == x
@@ -20,7 +23,7 @@ instance Eq Pos1 where
     Pos1 x y == Pos1 x' y' = x == x' && y == y'
 -- Lawful
 
-
+--Pos1 is a datatype, which is instance of Eq
 
 data Pos2 = Pos2 Integer Integer
     deriving Show
