@@ -106,6 +106,7 @@ eval (Eql e1 e2) = do
     (ValInt x, ValInt y) -> pure $ ValBool $ x == y
     (ValBool x, ValBool y) -> pure $ ValBool $ x == y
     (_, _) -> failure "Invalid operands to equality"
+    
 eval (If cond e1 e2) = do
   cond' <- eval cond
   case cond' of
@@ -115,9 +116,11 @@ eval (If cond e1 e2) = do
 eval (Let var e1 e2) = do
   v1 <- eval e1
   localEnv (envExtend var v1) $ eval e2
+
 eval (Lambda var body) = do
   env <- askEnv
   pure $ ValFun env var body
+
 eval (Apply e1 e2) = do
   v1 <- eval e1
   v2 <- eval e2
@@ -126,5 +129,6 @@ eval (Apply e1 e2) = do
       localEnv (const $ envExtend var arg f_env) $ eval body
     (_, _) ->
       failure "Cannot apply non-function"
+      
 eval (TryCatch e1 e2) =
   eval e1 `catch` eval e2

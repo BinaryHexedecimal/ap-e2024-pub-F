@@ -1,4 +1,3 @@
-
 module APL.Eval_Tests (tests) where
 
 
@@ -8,11 +7,23 @@ import Test.Tasty.HUnit (testCase, (@?=))
 import Test.Tasty (TestTree, testGroup)
 
 
+---It seems that your terminal-based build (likely via cabal or stack) is successfully compiling and 
+---running the code, but Visual Studio Code (VSCode) is not recognizing the Test.Tasty.HUnit module, 
+--even though it's correctly installed for your project.
+
+--This is a common issue in VSCode, where the editor doesn't 
+--always use the same environment or GHC configuration as your terminal.
+
+--just ignore the red line
+
+
 tests :: TestTree
 tests =
   testGroup
     "Evaluation"
-    [testCase "Constant" $
+    [
+      --testCase :: TestName -> Assertion -> TestTree
+      testCase "Constant" $
         eval envEmpty (CstInt 2)
           @?= Right (ValInt 2) ,
     ---
