@@ -27,3 +27,4 @@ test-suite week1-test
         base
       , tasty
       , week1
+      , tasty-hunit

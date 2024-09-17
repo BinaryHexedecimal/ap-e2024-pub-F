@@ -11,8 +11,6 @@ where
 
 import APL.AST (Exp (..), VName)
 import Control.Monad (ap, liftM)
-import Text.Printf (vFmt)
-import Foreign.C (errnoToIOError)
 
 data Val
   = ValInt Integer
@@ -41,7 +39,7 @@ newtype EvalM a = EvalM (Env -> Either Error a )
 --EvalM a is a wrapper around Either Error a.
 
 askEnv :: EvalM Env
-askEnv = EvalM $ \env -> Right env
+askEnv = EvalM $ \env -> env
 
 localEnv :: (Env -> Env) -> EvalM a -> EvalM a
 localEnv f (EvalM g)=
@@ -49,29 +47,18 @@ localEnv f (EvalM g)=
 
 instance Functor EvalM where
   fmap :: (a -> b) -> EvalM a -> EvalM b
-  fmap f (EvalM x) =
-    EvalM $ \env -> case x env of 
-      Right v -> Right $ f v
-      Left err -> Left err
-
-  --fmap _ (EvalM (Left e)) = EvalM $ Left e
-  --fmap f (EvalM (Right x)) = EvalM $ Right (f x)
+  fmap _ (EvalM (Left e)) = EvalM $ Left e
+  fmap f (EvalM (Right x)) = EvalM $ Right (f x)
   -- Alternatively: fmap = liftM
 
 instance Applicative EvalM where
   pure :: a -> EvalM a
-  pure x = EvalM $ \_env -> Right x
-  
+  pure x = EvalM $ Right x
   (<*>) :: EvalM (a -> b) -> EvalM a -> EvalM b
-  EvalM ef <*> EvalM ex = EvalM $ \env ->
-    case (ef env, ex env) of
-      (Left err, _) -> Left err
-      (_, Left err) -> Left err
-      (Right f, Right x) -> Right (f x)
-
---ef is function env -> Either Error a
---so ef env return Either Error a 
--- Alternatively: (<*>) = ap
+  EvalM (Left e)  <*> _               = EvalM (Left e)
+  _               <*> EvalM (Left e)  = EvalM (Left e)
+  EvalM (Right f) <*> EvalM (Right x) = EvalM $ Right (f x)
+  -- Alternatively: (<*>) = ap
 
 
 {- 
@@ -87,103 +74,123 @@ instance Monad EvalM where
 
 instance Monad EvalM where  
     (>>=) :: EvalM a -> (a -> EvalM b) -> EvalM b
-    EvalM x >>= f  = EvalM $ \env ->
-      case x env of
-        Left err ->  Left err
-        Right x' -> 
-          let EvalM y = f x'
-           in y env
+    EvalM x >>= f 
+      = case x of
+        Left err -> EvalM $ Left err
+        Right x' -> f x'
 
 
 failure :: String -> EvalM a
-failure str = EvalM $ \_env -> Left str
+failure str = EvalM $ Left str
 
 runEval :: EvalM a -> Either Error a
-runEval (EvalM m) =  m envEmpty
+runEval (EvalM envEmpty x) =  x
 
 ---expresssion er still exp
 ---val will be wrapped as evalM val
 --funktion eval skal omskrives
 
-
-catch :: EvalM a -> EvalM a -> EvalM a
-catch (EvalM m1) (EvalM m2) =  EvalM $ \env ->
-  case m1 env of
-    Left _ -> m2 env
-    Right x -> Right x
-
-evalIntBinOp :: (Integer -> Integer -> EvalM Integer) -> Exp -> Exp -> EvalM Val
-evalIntBinOp f e1 e2 = do
-  v1 <- eval  e1
-  v2 <- eval  e2
+evalIntBinOp :: (Integer -> Integer -> EvalM Integer) ->Env -> Exp -> Exp -> EvalM Val
+evalIntBinOp f env e1 e2 = do
+  v1 <- eval env e1
+  v2 <- eval env e2
   case (v1, v2) of
-    (ValInt x, ValInt y) ->  ValInt <$> f x y
+    (ValInt x, ValInt y) -> ValInt <$> f x y
     (_, _) -> failure "Non-integer operand"
 
-evalIntBinOp' :: (Integer -> Integer -> Integer) -> Exp -> Exp -> EvalM Val
-evalIntBinOp' f e1 e2 = 
-  evalIntBinOp f' e1 e2
+evalIntBinOp' :: (Integer -> Integer -> Integer) ->  Env -> Exp -> Exp -> EvalM Val
+evalIntBinOp' f env e1 e2 = 
+  evalIntBinOp f' env e1 e2
   where
     f' x y = pure $ f x y
 
 eval ::  Exp -> EvalM Val
-eval (CstInt x) = pure $ ValInt x
-eval (CstBool b) = pure $ ValBool b
-eval (Var v) = do
-  env <- askEnv
+eval _ (CstInt x) = pure $ ValInt x
+eval _ (CstBool b) = pure $ ValBool b
+eval env (Var v) = do
   case envLookup v env of
     Just x -> pure x
     Nothing -> failure $ "Unknown variable: " ++ v
 
-eval (Add e1 e2) = evalIntBinOp' (+) e1 e2
-eval (Sub e1 e2) = evalIntBinOp' (-)  e1 e2
-eval (Mul e1 e2) = evalIntBinOp' (*)  e1 e2
+eval env (Add e1 e2) = evalIntBinOp' (+) env e1 e2
+eval env (Sub e1 e2) = evalIntBinOp' (-) env e1 e2
+eval env (Mul e1 e2) = evalIntBinOp' (*) env e1 e2
 
-eval (Div e1 e2) = evalIntBinOp checkedDiv e1 e2
+eval env (Div e1 e2) = evalIntBinOp checkedDiv env e1 e2
   where
     checkedDiv _ 0 = failure "Division by zero"
     checkedDiv x y = pure $ x `div` y
 
-eval (Pow e1 e2) = evalIntBinOp checkedPow e1 e2
+eval env (Pow e1 e2) = evalIntBinOp checkedPow env e1 e2
   where
     checkedPow x y = 
       case (y < 0) of
         True -> failure "Negative power"
         _ -> pure $ x ^ y
 
-eval (Eql e1 e2) = do
-  v1 <- eval  e1
-  v2 <- eval  e2
+eval env (Eql e1 e2) = do
+  v1 <- eval env e1
+  v2 <- eval env e2
   case (v1, v2) of
     (ValInt x,  ValInt y) -> pure $ ValBool $ x == y
     (ValBool x, ValBool y) ->pure $ ValBool $ x == y
     (_,_) -> failure "Invalid operands to equality"
 
-eval (If cond e1 e2) = do
-  b <- eval cond
+
+-- when eval returns a value of type EvalM Val, 
+---which is a wrapper around Either Error Val. You cannot pattern 
+---match on the value inside EvalM directly like that.
+
+--Solution:
+--You need to 
+--1. extract the result from EvalM using the do notation 
+--2. or pattern matching on Either. Here's the corrected version of the If clause:
+
+eval env (If cond e1 e2) = do
+  b <- eval env cond
   case b of
     --EvalM (Left err) -> failure err
-    ValBool True -> eval e1
-    ValBool False -> eval e2
+    ValBool True -> eval env e1
+    ValBool False -> eval env e2
     _ -> failure "Non-boolean conditional."
 
-eval (Let var e1 e2) = do
-    v1 <- eval e1 
-    localEnv (envExtend var v1) $ eval e2
+eval env (Let var e1 e2) = do
+    v1 <- eval env e1 
+    eval (envExtend var v1 env) e2
 
-eval (Lambda var body) = do
-  env <-askEnv
+eval env (Lambda var body) = do
   pure $ ValFun env var body
 
-eval (Apply e1 e2) = do
-  v1 <- eval e1
-  v2 <- eval e2
+eval env (Apply e1 e2) = do
+  v1 <- eval env e1
+  v2 <- eval env e2
   case (v1, v2) of
     (ValFun envFun paraName body, argVal ) -> 
-        localEnv(const $ envExtend paraName argVal envFun) $
-           eval body
+        let newEnv = envExtend paraName argVal envFun
+          in eval newEnv body
     (_, _) -> failure "Cannot apply non-function"
 
-eval (TryCatch e1 e2) = 
-  eval e1 `catch` eval e2    
 
+--eval env e1 returns an EvalM Val, you cannot directly pattern 
+---match on it.
+{- 
+eval env (TryCatch e1 e2) = do
+  result <- eval env e1
+  case result of
+    Left _ -> eval env e2
+    Right x -> pure x
+ -}
+
+{- eval env (TryCatch e1 e2) = 
+  case eval env e1 of
+    Left _ -> eval env e2
+    Right x -> pure x -}
+
+eval env (TryCatch e1 e2) = 
+  eval env e1 `catch` eval env e2    
+
+catch :: EvalM a -> EvalM a -> EvalM a
+catch (EvalM m1) (EvalM m2) =  EvalM $
+  case m1 of
+    Left _ -> m2 
+    Right x -> Right x

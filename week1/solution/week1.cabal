@@ -26,4 +26,5 @@ test-suite week1-test
     build-depends:
         base
       , tasty
+      , tasty-hunit
       , week1
