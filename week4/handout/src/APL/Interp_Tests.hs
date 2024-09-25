@@ -29,7 +29,15 @@ pureTests :: TestTree
 pureTests =
   testGroup
     "Pure interpreter"
-    []
+    [
+      testCase "Let" $
+        eval' (Let "x" (Add (CstInt 2) (CstInt 3)) (Var "x"))
+        @?= ValInt 5,
+      testCase "localEnv" $
+        eval' (
+        localEnv (const [("x", ValInt 1)]) askEnv)
+        @?= [("x", ValInt 1)]
+    ]
 
 ioTests :: TestTree
 ioTests =
