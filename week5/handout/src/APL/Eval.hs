@@ -62,13 +62,24 @@ catch (EvalM m1) (EvalM m2) = EvalM $ \env ->
 runEval :: EvalM a -> Either Error a
 runEval (EvalM m) = m envEmpty
 
-evalIntBinOp :: (Integer -> Integer -> EvalM Integer) -> Exp -> Exp -> EvalM Val
+-- evalIntBinOp :: (Integer -> Integer -> EvalM Integer) -> Exp -> Exp -> EvalM Val
+-- evalIntBinOp f e1 e2 = do
+--   v1 <- eval e1
+--   v2 <- eval e2
+--   case (v1, v2) of
+--     (ValInt x, ValInt y) -> ValInt <$> f x y
+--     (_, _) -> failure NonInteger
+
 evalIntBinOp f e1 e2 = do
   v1 <- eval e1
-  v2 <- eval e2
-  case (v1, v2) of
-    (ValInt x, ValInt y) -> ValInt <$> f x y
-    (_, _) -> failure NonInteger
+  case v1 of
+    ValInt x -> do
+      v2 <- eval e2
+      case v2 of
+        ValInt y -> ValInt <$> f x y
+        _ -> failure NonInteger
+    _ -> failure NonInteger
+
 
 evalIntBinOp' :: (Integer -> Integer -> Integer) -> Exp -> Exp -> EvalM Val
 evalIntBinOp' f e1 e2 =
