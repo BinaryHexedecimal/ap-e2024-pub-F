@@ -19,10 +19,12 @@ type Env = [(VName, Val)]
 
 envEmpty :: Env
 envEmpty = []
+
 envExtend :: VName -> Val -> Env -> Env
 envExtend v val env = (v,val):env
+
 envLookup :: VName -> Env -> Maybe Val
-envLookup v env = lookup v env
+envLookup = lookup
 
 
 --help function, only +-*
@@ -41,25 +43,25 @@ eval env (CstBool x) = Right $ ValBool x
 eval env (Add e1 e2) = unwrap env (+) e1 e2
 eval env (Sub e1 e2) = unwrap env (-) e1 e2
 eval env (Mul e1 e2) = unwrap env (*) e1 e2
-eval env (Div e1 e2) = 
+eval env (Div e1 e2) =
     case (eval env e1, eval env e2) of
       (Left err, _) -> Left err
       (_, Left err) -> Left err
       (Right (ValInt x), Right (ValInt y)) -> checkedDiv x y
       (Right _, Right _) -> Left "Non-integer operand"
-    where  
+    where
       checkedDiv _ 0 = Left "Division by zero"
       checkedDiv x y = Right $ ValInt (x `div` y)
 
-eval env (Pow e1 e2) = 
+eval env (Pow e1 e2) =
     case (eval env e1, eval env e2) of
       (Left err, _) -> Left err
       (_, Left err) -> Left err
       (Right (ValInt x), Right (ValInt y)) -> checkedPow x y
       (Right _, Right _) -> Left "Non-integer operand"
-    where  
-      checkedPow x y  = 
-        if y <0 
+    where
+      checkedPow x y  =
+        if y <0
           then Left "exp negative"
           else Right $ ValInt (x^y)
 
@@ -75,10 +77,10 @@ eval env (Eql e1 e2) =
 
 eval env (If cond e1 e2) =
     case eval env cond of
-    Left err -> Left err
-    Right (ValBool True) -> eval env e1
-    Right (ValBool False) -> eval env e2
-    Right _ -> Left "The first expression is not boolean"
+      Left err -> Left err
+      Right (ValBool True) -> eval env e1
+      Right (ValBool False) -> eval env e2
+      Right _ -> Left "The first expression is not boolean"
 
 eval env (Var v) =
   case envLookup v env of

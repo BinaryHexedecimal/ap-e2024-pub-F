@@ -6,6 +6,8 @@ where
 
 import Control.Monad (ap, liftM)
 
+-- AST: abstract syntactic tree
+
 type VName = String
 
 data Exp

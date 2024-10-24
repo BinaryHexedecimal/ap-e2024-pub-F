@@ -25,20 +25,24 @@ envExtend :: VName -> Val -> Env -> Env
 envExtend v val env = (v, val) : env
 
 envLookup :: VName -> Env -> Maybe Val
-envLookup v env = lookup v env
+envLookup = lookup
 
 type Error = String
 
 newtype EvalM a = EvalM (Env -> Either Error a)
 
 instance Functor EvalM where
+  fmap :: (a -> b) -> EvalM a -> EvalM b
   fmap = liftM
 
 instance Applicative EvalM where
+  pure :: a -> EvalM a
   pure x = EvalM $ \_env -> Right x
+  (<*>) :: EvalM (a -> b) -> EvalM a -> EvalM b
   (<*>) = ap
 
 instance Monad EvalM where
+  (>>=) :: EvalM a -> (a -> EvalM b) -> EvalM b
   EvalM x >>= f = EvalM $ \env ->
     case x env of
       Left err -> Left err
@@ -106,7 +110,7 @@ eval (Eql e1 e2) = do
     (ValInt x, ValInt y) -> pure $ ValBool $ x == y
     (ValBool x, ValBool y) -> pure $ ValBool $ x == y
     (_, _) -> failure "Invalid operands to equality"
-    
+
 eval (If cond e1 e2) = do
   cond' <- eval cond
   case cond' of
@@ -129,6 +133,6 @@ eval (Apply e1 e2) = do
       localEnv (const $ envExtend var arg f_env) $ eval body
     (_, _) ->
       failure "Cannot apply non-function"
-      
+
 eval (TryCatch e1 e2) =
   eval e1 `catch` eval e2

@@ -57,6 +57,7 @@ tests =
     testCase "Eql (true)" $
       eval envEmpty (Eql (CstInt 2) (CstInt 2))
         @?= Right (ValBool True),
+
     --
     testCase "If" $
       eval envEmpty (If (CstBool True) (CstInt 2) (Div (CstInt 7) (CstInt 1)))
